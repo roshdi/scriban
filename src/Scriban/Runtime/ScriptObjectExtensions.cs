@@ -159,7 +159,7 @@ namespace Scriban.Runtime
         /// <param name="exportName">Name of the member name replacement. If null, use the default renamer will be used.</param>
         public static void ImportMember(this IScriptObject script, object obj, string memberName, string exportName = null)
         {
-            script.Import(obj, ScriptMemberImportFlags.All, member => member.Name == memberName, exportName != null ? name => exportName: (MemberRenamerDelegate)null);
+            script.Import(obj, ScriptMemberImportFlags.All, member => member.Name == memberName, exportName != null ? name => exportName : (MemberRenamerDelegate)null);
         }
 
 
@@ -253,14 +253,14 @@ namespace Scriban.Runtime
 
                 if ((flags & ScriptMemberImportFlags.Property) != 0)
                 {
-                    foreach (var property in typeInfo.GetProperties(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public| BindingFlags.DeclaredOnly))
+                    foreach (var property in typeInfo.GetProperties(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
                     {
                         // Workaround with .NET Core, extension method is not working (retuning null despite doing property.GetMethod), so we need to inline it here
                         var getMethod = property.GetMethod;
-                        if (!property.CanRead || !getMethod.IsPublic)
-                        {
-                            continue;
-                        }
+                        //if (!property.CanRead || !getMethod.IsPublic)
+                        //{
+                        //    continue;
+                        //}
 
                         if (filter != null && !filter(property))
                         {
@@ -284,7 +284,7 @@ namespace Scriban.Runtime
                             }
                             else
                             {
-                                if (property.GetIndexParameters().Length==0)
+                                if (property.GetIndexParameters().Length == 0)
                                     scriptObj.SetValue(newPropertyName, property.GetValue(obj), false);
                             }
                         }
@@ -293,7 +293,7 @@ namespace Scriban.Runtime
 
                 if ((flags & ScriptMemberImportFlags.Method) != 0 && useStatic)
                 {
-                    foreach (var method in typeInfo.GetMethods(BindingFlags.Static | BindingFlags.Public| BindingFlags.DeclaredOnly))
+                    foreach (var method in typeInfo.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.DeclaredOnly))
                     {
                         if (filter != null && !filter(method))
                         {
