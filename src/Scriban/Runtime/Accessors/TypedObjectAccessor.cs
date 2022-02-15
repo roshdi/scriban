@@ -65,7 +65,7 @@ namespace Scriban.Runtime.Accessors
                     return true;
                 }
 
-                var propertyAccessor = (PropertyInfo) memberAccessor;
+                var propertyAccessor = (PropertyInfo)memberAccessor;
                 value = propertyAccessor.GetValue(target);
                 return true;
             }
@@ -79,7 +79,7 @@ namespace Scriban.Runtime.Accessors
                 value = default;
                 return false;
             }
-            value = this._indexer.GetValue(target, new []{index});
+            value = this._indexer.GetValue(target, new[] { index });
             return true;
         }
 
@@ -89,7 +89,7 @@ namespace Scriban.Runtime.Accessors
             {
                 return false;
             }
-            _indexer.SetValue(target, value, new []{index});
+            _indexer.SetValue(target, value, new[] { index });
             return true;
         }
 
@@ -107,7 +107,7 @@ namespace Scriban.Runtime.Accessors
             }
 
             var propertyAccessor = (PropertyInfo)memberAccessor;
-                propertyAccessor.SetValue(target, context.ToObject(span, value, propertyAccessor.PropertyType));
+            propertyAccessor.SetValue(target, context.ToObject(span, value, propertyAccessor.PropertyType));
 
             return true;
         }
@@ -118,7 +118,7 @@ namespace Scriban.Runtime.Accessors
 
             while (type != null)
             {
-                foreach (var field in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly))
+                foreach (var field in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.Public | BindingFlags.DeclaredOnly))
                 {
                     var keep = field.GetCustomAttribute<ScriptMemberIgnoreAttribute>() == null;
                     if (keep && !field.IsStatic && field.IsPublic && !field.IsLiteral && (_filter == null || _filter(field)))
@@ -136,13 +136,13 @@ namespace Scriban.Runtime.Accessors
                     }
                 }
 
-                foreach (var property in type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly))
+                foreach (var property in type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
                 {
                     var keep = property.GetCustomAttribute<ScriptMemberIgnoreAttribute>() == null;
 
                     // Workaround with .NET Core, extension method is not working (retuning null despite doing property.GetMethod), so we need to inline it here
                     var getMethod = property.GetMethod;
-                    if (keep && property.CanRead && !getMethod.IsStatic && getMethod.IsPublic && (_filter == null || _filter(property)))
+                    if (keep && property.CanRead && !getMethod.IsStatic  && (_filter == null || _filter(property)))
                     {
                         var indexParameters = property.GetIndexParameters();
                         if (indexParameters.Length > 0)
