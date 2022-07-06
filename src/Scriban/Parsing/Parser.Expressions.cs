@@ -103,6 +103,10 @@ namespace Scriban.Parsing
 
             var enteringPrecedence = precedence;
 
+            // Override the mode
+            var originalMode = mode;
+            mode = mode == ParseExpressionMode.WhenExpression ? ParseExpressionMode.Default : mode;
+
             EnterExpression();
             try
             {
@@ -238,6 +242,12 @@ namespace Scriban.Parsing
                                 memberExpression.DotToken = dotToken;
                                 memberExpression.Target = leftOperand;
 
+                                // We parse left associated, so we need to propagate the ?. if it is nested
+                                if (leftOperand is ScriptMemberExpression nestedMemberExpression && nestedMemberExpression.DotToken.TokenType == TokenType.QuestionDot)
+                                {
+                                    dotToken.TokenType = TokenType.QuestionDot;
+                                }
+
                                 var member = ParseVariable();
                                 if (!(member is ScriptVariable))
                                 {
@@ -285,7 +295,7 @@ namespace Scriban.Parsing
                         ExpectAndParseTokenTo(indexerExpression.OpenBracket, TokenType.OpenBracket); // parse [
 
                         // unit test: 130-indexer-accessor-error5.txt
-                        indexerExpression.Index = ExpectAndParseExpression(indexerExpression, functionCall, 0, $"Expecting <index_expression> instead of `{GetAsText(Current)}`");
+                        indexerExpression.Index = ExpectAndParseExpression(indexerExpression, functionCall, 0, $"Expecting <index_expression> instead of `{GetAsText(Current)}`", mode);
 
                         if (Current.Type != TokenType.CloseBracket)
                         {
@@ -368,6 +378,11 @@ namespace Scriban.Parsing
                     int newPrecedence;
                     if (TryBinaryOperator(out binaryOperatorType, out newPrecedence) || (_isLiquid && TryLiquidBinaryOperator(out binaryOperatorType, out newPrecedence)))
                     {
+                        if (originalMode == ParseExpressionMode.WhenExpression && binaryOperatorType == ScriptBinaryOperator.Or)
+                        {
+                            break;
+                        }
+
                         // Check precedence to see if we should "take" this operator here (Thanks TimJones for the tip code! ;)
                         if (newPrecedence <= precedence)
                         {
@@ -1031,7 +1046,7 @@ namespace Scriban.Parsing
             newPrecedence = GetDefaultUnaryOperatorPrecedence(unaryExpression.Operator);
 
             // unit test: 115-unary-error1.txt
-            unaryExpression.Right = ExpectAndParseExpression(unaryExpression, null, newPrecedence);
+            unaryExpression.Right = ExpectAndParseExpression(unaryExpression, null, newPrecedence) ;
             return Close(unaryExpression);
         }
 
@@ -1330,6 +1345,11 @@ namespace Scriban.Parsing
             /// Only literal, unary, nested, array/object initializer, dot access, array access
             /// </summary>
             BasicExpression,
+
+            /// <summary>
+            /// A when expression cannot use `||`, ',' or 'or' at the top-level as they are used to separate expressions.
+            /// </summary>
+            WhenExpression,
         }
     }
 }

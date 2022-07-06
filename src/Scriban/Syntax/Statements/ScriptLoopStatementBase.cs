@@ -4,6 +4,8 @@
 
 #nullable disable
 
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Scriban.Helpers;
@@ -104,10 +106,18 @@ namespace Scriban.Syntax
         {
             private int _length;
             private object _lengthObject;
+            private IEnumerable _list;
+            private IEnumerator _it;
+            private bool _isLast;
+            private bool _isLastTaken;
+
+            public void SetEnumerable(IEnumerable list, IEnumerator it)
+            {
+                _list = list;
+                _it = it;
+            }
 
             public int Index { get; set; }
-
-            public int LocalIndex { get; set; }
 
             public bool IsFirst => Index == 0;
 
@@ -117,15 +127,31 @@ namespace Scriban.Syntax
 
             public bool ValueChanged { get; set; }
 
-            public bool IsLast { get; set; }
+            public void ResetLast() => _isLastTaken = false;
+
+            public bool MoveNextAndIsLast()
+            {
+                if (_it is null) return false;
+
+                if (!_isLastTaken)
+                {
+                    _isLast = !_it.MoveNext();
+                    _isLastTaken = true;
+                }
+
+                return _isLast;
+            }
 
             public int Length
             {
-                get => _length;
-                set
+                get
                 {
-                    _length = value;
-                    _lengthObject = value;
+                    if (_lengthObject == null)
+                    {
+                        _length = _list is IList list ? list.Count : _list.Cast<object>().Count();
+                        _lengthObject = _length;
+                    }
+                    return _length;
                 }
             }
 
@@ -146,12 +172,9 @@ namespace Scriban.Syntax
                     case "even":
                     case "odd":
                     case "last":
-                        return true;
                     case "length":
-                        return _lengthObject != null;
                     case "rindex":
                     case "rindex0":
-                        return _lengthObject != null;
                     case "changed":
                         return true;
                 }
@@ -170,8 +193,8 @@ namespace Scriban.Syntax
                         value = isLiquid ? Index + 1 : Index;
                         return true;
                     case "length":
-                        value = _lengthObject;
-                        return _lengthObject != null;
+                        value = Length;
+                        return true;
                     case "first":
                         value = IsFirst ? BoxHelper.TrueObject : BoxHelper.FalseObject;
                         return true;
@@ -182,17 +205,14 @@ namespace Scriban.Syntax
                         value = IsOdd ? BoxHelper.TrueObject : BoxHelper.FalseObject;
                         return true;
                     case "last":
-                        value = IsLast ? BoxHelper.TrueObject : BoxHelper.FalseObject;
+                        value = MoveNextAndIsLast() ? BoxHelper.TrueObject : BoxHelper.FalseObject;
                         return true;
                     case "changed":
                         value = ValueChanged ? BoxHelper.TrueObject : BoxHelper.FalseObject;
                         return true;
                     case "rindex":
-                        if (_lengthObject != null)
-                        {
-                            value = isLiquid ? _length - Index : _length - Index - 1;
-                        }
-                        return _lengthObject != null;
+                        value = isLiquid ? Length - Index : Length - Index - 1;
+                        return true;
                     default:
                         if (isLiquid)
                         {
@@ -203,7 +223,7 @@ namespace Scriban.Syntax
                             }
                             if (member == "rindex0")
                             {
-                                value = _length - Index - 1;
+                                value = Length - Index - 1;
                                 return true;
                             }
                         }

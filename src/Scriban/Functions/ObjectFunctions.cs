@@ -147,11 +147,11 @@ namespace Scriban.Functions
         /// <remarks>
         /// ```scriban-html
         /// {{ 255 | object.format "X4" }}
-        /// {{ 1523 | object.format "N2" "fr-FR" }}
+        /// {{ 1523 | object.format "N2" "en-US" }}
         /// ```
         /// ```html
         /// 00FF
-        /// 1 523,00
+        /// 1,523.00
         /// ```
         /// </remarks>
         public static string Format(TemplateContext context, SourceSpan span, object value, string format, string culture = null)
@@ -351,7 +351,8 @@ namespace Scriban.Functions
         }
 
         /// <summary>
-        /// Returns string representing the type of the input object. The type can be `string`, `bool`, `number`, `array`, `iterator` and `object`
+        /// Returns string representing the type of the input object. The type can be `string`, `bool`, `byte`, `sbyte`, `ushort`, `short`, `uint`, `int`,
+        /// `ulong`, `long`, `float`, `double`, `decimal`, `bigint`, `enum`, `range`, `array`, `function` and `object`
         /// </summary>
         /// <param name="value">The input object.</param>
         /// <remarks>
@@ -394,6 +395,7 @@ namespace Scriban.Functions
         /// <summary>
         /// Gets the member's values of the specified value object.
         /// </summary>
+        /// <param name="context">The template context</param>
         /// <param name="value">The input object.</param>
         /// <returns>A list with the member values of the input object</returns>
         /// <remarks>
@@ -405,10 +407,22 @@ namespace Scriban.Functions
         /// ```
         /// </remarks>
 #pragma warning disable CS0108
-        public static ScriptArray Values(IDictionary<string, object> value)
+        public static ScriptArray Values(TemplateContext context, object value)
 #pragma warning restore CS0108
         {
-            return value == null ? new ScriptArray() : new ScriptArray(value.Values);
+            if (value == null) return new ScriptArray();
+            if (value is IDictionary<string, object> dictStringObject) return new ScriptArray(dictStringObject.Values);
+            // Don't try to return values of a custom function
+            if (value is IScriptCustomFunction) return new ScriptArray();
+
+            var accessor = context.GetMemberAccessor(value);
+            var scriptArray = new ScriptArray();
+            foreach(var member in accessor.GetMembers(context, context.CurrentSpan, value))
+            {
+                _ = accessor.TryGetValue(context, context.CurrentSpan, value, member, out var memberValue);
+                scriptArray.Add(memberValue);
+            }
+            return scriptArray;
         }
     }
 }

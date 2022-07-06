@@ -23,7 +23,7 @@ namespace Scriban.Parsing
     partial class Parser
     {
 
-        private void ParseScribanStatement(string identifier, ScriptStatement parent, bool parseEndOfStatementAfterEnd, ref ScriptStatement statement, ref bool hasEnd, ref bool nextStatement)
+        private void ParseScribanStatement(string identifier, ScriptNode parent, bool parseEndOfStatementAfterEnd, ref ScriptStatement statement, ref bool hasEnd, ref bool nextStatement)
         {
             var startToken = Current;
             switch (identifier)
@@ -80,7 +80,14 @@ namespace Scriban.Parsing
                     }
                     else if (parent is ScriptForStatement forStatement)
                     {
-                        forStatement.Else = (ScriptElseStatement)nextCondition;
+                        if (nextCondition is ScriptElseStatement nextElse)
+                        {
+                            forStatement.Else = nextElse;
+                        }
+                        else
+                        {
+                            LogError(nextCondition.Span, "Invalid if/else combination within a for statement.");
+                        }
                     }
                     else
                     {

@@ -3,6 +3,8 @@
 // See license.txt file in the project root for full license information.
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Scriban.Functions;
 
@@ -29,6 +31,32 @@ namespace Scriban.Tests
             {
                 TestParser.AssertTemplate("true", "{{ [1,2] || array.sort }}");
             }
+
+            [Test]
+            public void TestContains()
+            {
+                var mixed = new object[] { "hi", 1, TestEnum.First };
+                Assert.True(ArrayFunctions.Contains(mixed, "hi"));
+                Assert.True(ArrayFunctions.Contains(mixed, 1));
+                Assert.True(ArrayFunctions.Contains(mixed, TestEnum.First));
+                Assert.True(ArrayFunctions.Contains(mixed, "First"));
+                Assert.True(ArrayFunctions.Contains(mixed, 100));
+                TestParser.AssertTemplate("true", "{{ value | array.contains 'First' }}", model: new ObjectModel { Value = mixed });
+                TestParser.AssertTemplate("true", "{{ value | array.contains 100 }}", model: new ObjectModel { Value = mixed });
+                TestParser.AssertTemplate("false", "{{ value | array.contains 'Second' }}", model: new ObjectModel { Value = mixed });
+                TestParser.AssertTemplate("false", "{{ value | array.contains 101 }}", model: new ObjectModel { Value = mixed });
+                TestParser.AssertTemplate("false", "{{ value | array.contains 'Third' }}", model: new ObjectModel { Value = mixed });
+            }
+            class ObjectModel
+            {
+                public object[] Value { get; set; }
+            }
+
+            enum TestEnum : int
+            {
+                First = 100,
+                Second = 101
+            }
         }
 
         public class Strings
@@ -42,6 +70,50 @@ namespace Scriban.Tests
             public void TestSliceAtError()
             {
                 TestParser.AssertTemplate("text(1,17) : error : Invalid number of arguments `0` passed to `string.slice1` while expecting `2` arguments", "{{ string.slice1 }}");
+            }
+
+            public record IndexOfTestCase(
+                string Text,
+                string Search,
+                int Expected,
+                int? StartIndex = null,
+                int? Count = null,
+                StringComparison? StringComparison = null
+            );
+
+            public static readonly IReadOnlyList<IndexOfTestCase> IndexOfTestCases = new IndexOfTestCase[]
+            {
+                new ("The quick brown fox", "quick", 4),
+                new ("The the the the", "the", 0, null, null, StringComparison.OrdinalIgnoreCase),
+                new ("The quick brown fox", "quick", -1, null, 2),
+                new ("The the the the", "the", 8, 6),
+            };
+
+            [Test]
+            [TestCaseSource(nameof(IndexOfTestCases))]
+            public void TestIndexOf(IndexOfTestCase testCase)
+            {
+                testCase = testCase ?? throw new ArgumentNullException(nameof(testCase));
+                var args = new[]
+                {
+                    (Name: "text", Value: MakeString(testCase.Text)),
+                    (Name: "search", Value: MakeString(testCase.Search)),
+                    (Name: "start_index", Value: MakeInt(testCase.StartIndex)),
+                    (Name: "count", Value: MakeInt(testCase.Count)),
+                    (Name: "string_comparison", Value: MakeString(testCase.StringComparison?.ToString())),
+                }.Select(x => $"{x.Name}: {x.Value}");
+                var script = $@"{{{{ string.index_of {string.Join(" ", args)} }}}}";
+                Template template = null;
+                Assert.DoesNotThrow(() => template = Template.Parse(script));
+                Assert.That(template, Is.Not.Null);
+                Assert.That(template.HasErrors, Is.False);
+                Assert.That(template.Messages, Is.Not.Null);
+                Assert.That(template.Messages.Count, Is.EqualTo(0));
+                var result = template.Render();
+                Assert.That(result, Is.EqualTo(testCase.Expected.ToString()));
+
+                static string MakeString(string value) => value is null ? "null" : $"'{value}'";
+                static string MakeInt(int? value) => value is null ? "null" : value.ToString();
             }
 
             [Test]
@@ -78,7 +150,7 @@ namespace Scriban.Tests
                     true,                               // fromEnd
                     "Hello, world. Goodbye, buddy.",    // expected
                 },
-                // notghing to replace
+                // nothing to replace
                 new object [] {
                     "Hello, world. Goodbye, world.",    // source
                     "xxxx",                             // match
