@@ -7,7 +7,8 @@
     <LangVersion>8.0</LangVersion>
     <DefineConstants>$(DefineConstants);SCRIBAN_PUBLIC</DefineConstants>
     <Authors>Alexandre Mutel</Authors>
-    <TargetFrameworks>netstandard2.0;net6.0</TargetFrameworks>
+    <!--<TargetFrameworks>netstandard2.0;net6.0</TargetFrameworks>-->
+    <TargetFrameworks>net6.0</TargetFrameworks>
     <PackageTags>templating;handlebars;liquid</PackageTags>
     <PackageIcon>scriban.png</PackageIcon>
     <PackageReadmeFile>readme.md</PackageReadmeFile>
@@ -48,8 +49,8 @@
     <!--Add support for sourcelink-->
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.*" PrivateAssets="All" />
   </ItemGroup>
-  <ItemGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETStandard'">
+  <!--<ItemGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETStandard'">
     <PackageReference Include="Microsoft.CSharp" Version="4.5.0" />
     <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.0" />
-  </ItemGroup>
+  </ItemGroup>-->
 </Project>
